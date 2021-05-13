@@ -1,0 +1,19 @@
+{
+  "properties": [
+    {
+      "name": "only-coders.mailgun.domain",
+      "type": "java.lang.String",
+      "description": "Mailgun domain."
+    },
+    {
+      "name": "only-coders.mailgun.api-key",
+      "type": "java.lang.String",
+      "description": "mailgun API key."
+    },
+    {
+      "name": "only-coders.mailgun.sender-mail",
+      "type": "java.lang.String",
+      "description": "Email sender address."
+    }
+  ]
+}
