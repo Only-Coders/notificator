@@ -12,6 +12,7 @@ import lombok.NoArgsConstructor;
 @Builder
 public class MessageDTO implements Serializable {
 
-  private String source;
   private EventType eventType;
+  private String message;
+  private String to;
 }

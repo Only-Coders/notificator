@@ -4,7 +4,12 @@ import lombok.*;
 import org.springframework.data.neo4j.core.schema.Node;
 
 @EqualsAndHashCode(callSuper = true)
-@Node({ "EducationalOrganization", "Organization" })
+@Node({ "Workplace" })
 @Data
 @NoArgsConstructor
-public class EducationalOrganization extends Organization {}
+@AllArgsConstructor
+@Builder
+public class Workplace extends BaseEntity {
+
+  private String name;
+}

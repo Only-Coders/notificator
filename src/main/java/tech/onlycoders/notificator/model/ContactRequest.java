@@ -1,8 +1,6 @@
 package tech.onlycoders.notificator.model;
 
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.springframework.data.neo4j.core.schema.Node;
 import org.springframework.data.neo4j.core.schema.Relationship;
 
@@ -10,10 +8,12 @@ import org.springframework.data.neo4j.core.schema.Relationship;
 @Node
 @Data
 @NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class ContactRequest extends BaseEntity {
 
   private String message;
 
   @Relationship(type = "TO", direction = Relationship.Direction.OUTGOING)
-  public Person receiver;
+  public Person target;
 }

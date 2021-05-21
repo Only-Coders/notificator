@@ -28,4 +28,6 @@ public class Tag {
   @DateLong
   @CreatedDate
   private Date createdAt;
+  //  @Version
+  //  private Long version;
 }

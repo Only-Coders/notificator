@@ -6,10 +6,7 @@ import lombok.NoArgsConstructor;
 import org.springframework.data.neo4j.core.schema.Node;
 
 @EqualsAndHashCode(callSuper = true)
-@Node
+@Node({ "Institute", "Workplace" })
 @Data
 @NoArgsConstructor
-public class Dummy extends BaseEntity {
-
-  private String token;
-}
+public class Institute extends Workplace {}
