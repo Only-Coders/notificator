@@ -1,5 +1,6 @@
 package tech.onlycoders.notificator.model;
 
+import java.io.Serializable;
 import java.util.Date;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -12,7 +13,7 @@ import org.springframework.data.neo4j.core.support.DateLong;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public abstract class Person extends BaseEntity {
+public abstract class Person extends BaseEntity implements Serializable {
 
   private String firstName;
   private String lastName;
@@ -22,7 +23,4 @@ public abstract class Person extends BaseEntity {
 
   @DateLong
   private Date securityUpdate;
-
-  @Relationship(type = "HAS", direction = Relationship.Direction.OUTGOING)
-  public Role role;
 }

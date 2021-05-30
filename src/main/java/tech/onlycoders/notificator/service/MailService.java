@@ -5,7 +5,7 @@ import net.sargue.mailgun.Mail;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-@Service
+//@Service
 public class MailService {
 
   private final Configuration configuration;
