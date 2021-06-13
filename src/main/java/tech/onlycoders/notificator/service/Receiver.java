@@ -1,50 +1,83 @@
 package tech.onlycoders.notificator.service;
 
-import org.redisson.api.RMap;
-import org.redisson.api.RedissonClient;
+import java.util.concurrent.ExecutionException;
 import org.springframework.amqp.rabbit.annotation.RabbitHandler;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
-import tech.onlycoders.notificator.repository.UserRepository;
+import tech.onlycoders.notificator.dto.EventType;
 import tech.onlycoders.notificator.dto.MessageDTO;
+import tech.onlycoders.notificator.model.NotificationConfig;
 import tech.onlycoders.notificator.model.User;
-
-import java.util.concurrent.ExecutionException;
+import tech.onlycoders.notificator.repository.UserRepository;
 
 @RabbitListener(queues = "onlycoders_notificator")
 @Component
 public class Receiver {
 
-    private final FirebaseService firebaseService;
-    private final UserRepository userRepository;
-    private final RMap<String, User> bucket;
+  private final FirebaseService firebaseService;
+  private final UserRepository userRepository;
+  private final MailService mailService;
 
-    public Receiver(FirebaseService firebaseService, RedissonClient rt, UserRepository userRepository) {
-        this.firebaseService = firebaseService;
-        this.userRepository = userRepository;
-        this.bucket = rt.getMap("EmailUserMap");
+  public Receiver(FirebaseService firebaseService, UserRepository userRepository, MailService mailService) {
+    this.firebaseService = firebaseService;
+    this.userRepository = userRepository;
+    this.mailService = mailService;
+  }
+
+  @RabbitHandler
+  public void receive(MessageDTO message) {
+    System.out.println(" [x] Received '" + message + "'");
+    this.userRepository.getUserNotificationConfig(message.getEventType().name(), message.getTo())
+      .ifPresentOrElse(
+        user ->
+          user
+            .getConfigs()
+            .stream()
+            .filter(notiConfig -> notiConfig.getType().name().equalsIgnoreCase(message.getEventType().name()))
+            .findFirst()
+            .ifPresentOrElse(
+              notificationConfig -> notifyUser(message, user, notificationConfig),
+              () -> System.out.println("[x] Notification Config not found for '" + message.getTo() + "'")
+            ),
+        () -> System.out.println("[x] User not found '" + message.getTo() + "'")
+      );
+  }
+
+  private void notifyUser(MessageDTO message, User user, NotificationConfig notificationConfig) {
+    if (message.getEventType() == EventType.NEW_POST) {
+      this.userRepository.getUserContactsAndFollowers(user.getEmail(), message.getEventType().name())
+        .forEach(
+          contact ->
+            contact
+              .getConfigs()
+              .stream()
+              .filter(notiConfig -> notiConfig.getType().name().equalsIgnoreCase(message.getEventType().name()))
+              .findFirst()
+              .ifPresentOrElse(
+                userConfig -> {
+                  sendNotification(message, contact, userConfig);
+                },
+                () -> System.out.println("[x] Notification Config not found for '" + contact.getEmail() + "'")
+              )
+        );
+    } else {
+      sendNotification(message, user, notificationConfig);
     }
+  }
 
-    @RabbitHandler
-    public void receive(MessageDTO message) throws ExecutionException, InterruptedException {
-        System.out.println(" [x] Received '" + message + "'");
-        String collection = null;
-        if (bucket.containsKey(message.getTo())) {
-            collection = bucket.get(message.getTo()).getCanonicalName();
-        } else {
-            var optionalUser = this.userRepository.findByEmail(message.getTo());
-            if (optionalUser.isPresent()) {
-                collection = optionalUser.get().getCanonicalName();
-                bucket.fastPut(collection, optionalUser.get());
-            }
-        }
-
-        if (collection != null) {
-            this.firebaseService.storeNotification(message, collection);
-            System.out.println(" [x] Notification stored '" + message + "'");
-        } else {
-            System.out.println(" [x] Target user not found " + message.getTo());
-        }
+  private void sendNotification(MessageDTO message, User user, NotificationConfig notificationConfig) {
+    try {
+      if (notificationConfig.getEmail()) {
+        System.out.println("[MAIL] " + message);
+        this.mailService.sendMail("OnlyCoders Notifications", user.getEmail(), message.getMessage());
+      }
+      if (notificationConfig.getPush()) {
+        this.firebaseService.storeNotification(message, user.getCanonicalName());
+        System.out.println("[PUSH] " + message);
+      }
+    } catch (ExecutionException | InterruptedException e) {
+      e.printStackTrace();
+      System.out.println("[x] Error sending notification to '" + message.getTo() + "'");
     }
-
+  }
 }
