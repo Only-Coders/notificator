@@ -8,6 +8,7 @@ import tech.onlycoders.notificator.dto.EventType;
 import tech.onlycoders.notificator.dto.MessageDTO;
 import tech.onlycoders.notificator.model.NotificationConfig;
 import tech.onlycoders.notificator.model.User;
+import tech.onlycoders.notificator.repository.FCMTokenRepository;
 import tech.onlycoders.notificator.repository.UserRepository;
 
 @RabbitListener(queues = "onlycoders_notificator")
@@ -17,11 +18,18 @@ public class Receiver {
   private final FirebaseService firebaseService;
   private final UserRepository userRepository;
   private final MailService mailService;
+  private final FCMTokenRepository fcmTokenRepository;
 
-  public Receiver(FirebaseService firebaseService, UserRepository userRepository, MailService mailService) {
+  public Receiver(
+    FirebaseService firebaseService,
+    UserRepository userRepository,
+    MailService mailService,
+    FCMTokenRepository fcmTokenRepository
+  ) {
     this.firebaseService = firebaseService;
     this.userRepository = userRepository;
     this.mailService = mailService;
+    this.fcmTokenRepository = fcmTokenRepository;
   }
 
   @RabbitHandler
@@ -73,6 +81,9 @@ public class Receiver {
       }
       if (notificationConfig.getPush()) {
         this.firebaseService.storeNotification(message, user.getCanonicalName());
+
+        var tokens = this.fcmTokenRepository.getUserTokens(user.getCanonicalName());
+        tokens.forEach(fcmToken -> this.firebaseService.sendPushNotification(message, fcmToken));
         System.out.println("[PUSH] " + message.getEventType() + " to: " + user.getEmail());
       }
     } catch (ExecutionException | InterruptedException e) {
