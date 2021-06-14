@@ -38,6 +38,7 @@ public class FirebaseService {
       .putData("message", messageDto.getMessage())
       .putData("type", messageDto.getEventType().name())
       .putData("from", messageDto.getFrom())
+      .putData("imageURI", messageDto.getImageURI())
       .setToken(fcmToken.getToken())
       .build();
     try {

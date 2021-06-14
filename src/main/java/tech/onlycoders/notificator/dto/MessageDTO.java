@@ -22,4 +22,5 @@ public class MessageDTO implements Serializable {
 
   private String from;
   private Date createdAt = new Date();
+  private String imageURI;
 }
