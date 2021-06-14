@@ -68,12 +68,12 @@ public class Receiver {
   private void sendNotification(MessageDTO message, User user, NotificationConfig notificationConfig) {
     try {
       if (notificationConfig.getEmail()) {
-        System.out.println("[MAIL] " + message);
+        System.out.println("[MAIL] " + message.getEventType() + " to: " + user.getEmail());
         this.mailService.sendMail("OnlyCoders Notifications", user.getEmail(), message.getMessage());
       }
       if (notificationConfig.getPush()) {
         this.firebaseService.storeNotification(message, user.getCanonicalName());
-        System.out.println("[PUSH] " + message);
+        System.out.println("[PUSH] " + message.getEventType() + " to: " + user.getEmail());
       }
     } catch (ExecutionException | InterruptedException e) {
       e.printStackTrace();
