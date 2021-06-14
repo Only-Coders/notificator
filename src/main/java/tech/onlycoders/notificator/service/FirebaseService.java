@@ -37,6 +37,7 @@ public class FirebaseService {
       .builder()
       .putData("message", messageDto.getMessage())
       .putData("type", messageDto.getEventType().name())
+      .putData("from", messageDto.getFrom())
       .setToken(fcmToken.getToken())
       .build();
     try {
