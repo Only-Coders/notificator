@@ -6,6 +6,7 @@ import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
 import tech.onlycoders.notificator.dto.EventType;
 import tech.onlycoders.notificator.dto.MessageDTO;
+import tech.onlycoders.notificator.model.Notification;
 import tech.onlycoders.notificator.model.NotificationConfig;
 import tech.onlycoders.notificator.model.User;
 import tech.onlycoders.notificator.repository.FCMTokenRepository;
@@ -51,9 +52,19 @@ public class Receiver {
       );
   }
 
-  private void notifyUser(MessageDTO message, User user, NotificationConfig notificationConfig) {
+  private void notifyUser(MessageDTO message, User sourceUser, NotificationConfig notificationConfig) {
+    var notification = Notification
+      .builder()
+      .message(message.getMessage())
+      .from(message.getFrom())
+      .canonicalName(sourceUser.getCanonicalName())
+      .eventType(message.getEventType())
+      .read(false)
+      .imageURI(message.getImageURI())
+      .createdAt(message.getCreatedAt())
+      .build();
     if (message.getEventType() == EventType.NEW_POST) {
-      this.userRepository.getUserContactsAndFollowers(user.getEmail(), message.getEventType().name())
+      this.userRepository.getUserContactsAndFollowers(sourceUser.getEmail(), message.getEventType().name())
         .forEach(
           contact ->
             contact
@@ -63,32 +74,32 @@ public class Receiver {
               .findFirst()
               .ifPresentOrElse(
                 userConfig -> {
-                  sendNotification(message, contact, userConfig);
+                  sendNotification(notification, contact, userConfig);
                 },
                 () -> System.out.println("[x] Notification Config not found for '" + contact.getEmail() + "'")
               )
         );
     } else {
-      sendNotification(message, user, notificationConfig);
+      sendNotification(notification, sourceUser, notificationConfig);
     }
   }
 
-  private void sendNotification(MessageDTO message, User user, NotificationConfig notificationConfig) {
+  private void sendNotification(Notification notification, User user, NotificationConfig notificationConfig) {
     try {
       if (notificationConfig.getEmail()) {
-        System.out.println("[MAIL] " + message.getEventType() + " to: " + user.getEmail());
-        this.mailService.sendMail("OnlyCoders Notifications", user.getEmail(), message.getMessage());
+        System.out.println("[MAIL] " + notification.getEventType() + " to: " + user.getEmail());
+        this.mailService.sendMail("OnlyCoders Notifications", user.getEmail(), notification.getMessage());
       }
       if (notificationConfig.getPush()) {
-        this.firebaseService.storeNotification(message, user.getCanonicalName());
+        this.firebaseService.storeNotification(notification, user.getCanonicalName());
 
         var tokens = this.fcmTokenRepository.getUserTokens(user.getCanonicalName());
-        tokens.forEach(fcmToken -> this.firebaseService.sendPushNotification(message, fcmToken));
-        System.out.println("[PUSH] " + message.getEventType() + " to: " + user.getEmail());
+        tokens.forEach(fcmToken -> this.firebaseService.sendPushNotification(notification, fcmToken));
+        System.out.println("[PUSH] " + notification.getEventType() + " to: " + user.getEmail());
       }
     } catch (ExecutionException | InterruptedException e) {
       e.printStackTrace();
-      System.out.println("[x] Error sending notification to '" + message.getTo() + "'");
+      System.out.println("[x] Error sending notification to '" + user.getCanonicalName() + "'");
     }
   }
 }
