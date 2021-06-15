@@ -6,7 +6,6 @@ import com.google.firebase.messaging.FirebaseMessagingException;
 import com.google.firebase.messaging.Message;
 import java.util.concurrent.ExecutionException;
 import org.springframework.stereotype.Service;
-import tech.onlycoders.notificator.dto.MessageDTO;
 import tech.onlycoders.notificator.model.FCMToken;
 import tech.onlycoders.notificator.model.Notification;
 import tech.onlycoders.notificator.repository.FCMTokenRepository;
@@ -37,15 +36,23 @@ public class FirebaseService {
   public void sendPushNotification(Notification notification, FCMToken fcmToken) {
     Message message = Message
       .builder()
+      .setNotification(
+        com.google.firebase.messaging.Notification
+          .builder()
+          .setTitle("OnlyCoders")
+          .setBody(notification.getMessage())
+          .build()
+      )
       .putData("message", notification.getMessage())
       .putData("type", notification.getEventType().name())
-      .putData("from", notification.getFrom())
+      .putData("fromUser", notification.getFrom())
       .putData("imageURI", notification.getImageURI())
       .setToken(fcmToken.getToken())
       .build();
     try {
       messaging.send(message);
     } catch (FirebaseMessagingException e) {
+      e.printStackTrace();
       this.fcmTokenRepository.deleteById(fcmToken.getId());
     }
   }

@@ -36,7 +36,7 @@ public class Receiver {
   @RabbitHandler
   public void receive(MessageDTO message) {
     System.out.println(" [x] Received '" + message + "'");
-    this.userRepository.getUserNotificationConfig(message.getEventType().name(), message.getTo())
+    this.userRepository.getUserNotificationConfig(message.getEventType().name(), message.getFrom())
       .ifPresentOrElse(
         user ->
           user
@@ -55,14 +55,17 @@ public class Receiver {
   private void notifyUser(MessageDTO message, User sourceUser, NotificationConfig notificationConfig) {
     var notification = Notification
       .builder()
-      .message(message.getMessage())
-      .from(message.getFrom())
-      .canonicalName(sourceUser.getCanonicalName())
       .eventType(message.getEventType())
-      .read(false)
-      .imageURI(message.getImageURI())
+      .message(message.getMessage())
+      .from(sourceUser.getFullName())
+      .canonicalName(sourceUser.getCanonicalName())
+      .imageURI(sourceUser.getImageURI())
       .createdAt(message.getCreatedAt())
+      .read(false)
       .build();
+
+    addFollowerContactStatus(message, notification);
+
     if (message.getEventType() == EventType.NEW_POST) {
       this.userRepository.getUserContactsAndFollowers(sourceUser.getEmail(), message.getEventType().name())
         .forEach(
@@ -80,26 +83,34 @@ public class Receiver {
               )
         );
     } else {
-      sendNotification(notification, sourceUser, notificationConfig);
+      this.userRepository.findByEmail(message.getTo())
+        .ifPresent(targetUser -> sendNotification(notification, targetUser, notificationConfig));
     }
   }
 
-  private void sendNotification(Notification notification, User user, NotificationConfig notificationConfig) {
+  private void addFollowerContactStatus(MessageDTO message, Notification notification) {
+    if (message.getEventType() == EventType.CONTACT_REQUEST || message.getEventType() == EventType.NEW_FOLLOWER) {
+      notification.setSourceIsFollower(userRepository.isFollower(message.getFrom(), message.getTo()));
+      notification.setSourceIsContact(userRepository.isContact(message.getFrom(), message.getTo()));
+    }
+  }
+
+  private void sendNotification(Notification notification, User targetUser, NotificationConfig notificationConfig) {
     try {
       if (notificationConfig.getEmail()) {
-        System.out.println("[MAIL] " + notification.getEventType() + " to: " + user.getEmail());
-        this.mailService.sendMail("OnlyCoders Notifications", user.getEmail(), notification.getMessage());
+        System.out.println("[MAIL] " + notification.getEventType() + " to: " + targetUser.getEmail());
+        this.mailService.sendMail("OnlyCoders Notifications", targetUser.getEmail(), notification.getMessage());
       }
       if (notificationConfig.getPush()) {
-        this.firebaseService.storeNotification(notification, user.getCanonicalName());
+        this.firebaseService.storeNotification(notification, targetUser.getCanonicalName());
 
-        var tokens = this.fcmTokenRepository.getUserTokens(user.getCanonicalName());
+        var tokens = this.fcmTokenRepository.getUserTokens(targetUser.getEmail());
         tokens.forEach(fcmToken -> this.firebaseService.sendPushNotification(notification, fcmToken));
-        System.out.println("[PUSH] " + notification.getEventType() + " to: " + user.getEmail());
+        System.out.println("[PUSH] " + notification.getEventType() + " to: " + targetUser.getEmail());
       }
     } catch (ExecutionException | InterruptedException e) {
       e.printStackTrace();
-      System.out.println("[x] Error sending notification to '" + user.getCanonicalName() + "'");
+      System.out.println("[x] Error sending notification to '" + targetUser.getCanonicalName() + "'");
     }
   }
 }

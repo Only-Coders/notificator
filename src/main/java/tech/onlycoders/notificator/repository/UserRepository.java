@@ -31,22 +31,30 @@ public interface UserRepository extends Neo4jRepository<User, String> {
   )
   List<User> getUserContactsAndFollowers(String email, String type);
 
+  @Query("MATCH (:User{email: $sourceEmail})<-[r:FOLLOWS]-(:User{email: $targetEmail}) RETURN COUNT(r)>0")
+  Boolean isFollower(String sourceEmail, String targetEmail);
+
+  @Query("MATCH (:User{email: $sourceEmail})-[r:IS_CONNECTED]-(:User{email: $targetEmail}) RETURN COUNT(r)>0")
+  Boolean isContact(String sourceEmail, String targetEmail);
+
   @Query("MATCH (u:User) WHERE u.eliminationDate < $now RETURN u.email")
   List<String> getUsersToDelete(long now);
 
   @Query(
-          "MATCH (target:User{email: $email})\n" +
-                  "    OPTIONAL MATCH (target)-[:PUBLISH]->(post:Post)\n" +
-                  "    OPTIONAL MATCH (target)-[:WORKS]->(workPosition:WorkPosition)\n" +
-                  "    OPTIONAL MATCH (target)-[:STUDIES]->(degree:Degree)\n" +
-                  "    OPTIONAL MATCH (target)-[:CREATES]->(report:Report) \n" +
-                  "    OPTIONAL MATCH (target)-[:SENDS|:TO]-(contactRequest:ContactRequest)\n" +
-                  "    OPTIONAL MATCH (post)<-[:TO]-(postReaction:Reaction)\n" +
-                  "    OPTIONAL MATCH (post)<-[:FOR]-(postComment:Comment) \n" +
-                  "    OPTIONAL MATCH (post)<-[:HAS]-(postReport:Report) \n" +
-                  "    OPTIONAL MATCH (postReaction)<-[:TO]-(commentReaction:Reaction) \n" +
-                  "detach delete commentReaction, postReport, postComment, postReaction,\n" +
-                  "contactRequest, report, degree, workPosition, post, target;"
+    "MATCH (target:User{email: $email})\n" +
+    "    OPTIONAL MATCH (target)-[:PUBLISH]->(post:Post)\n" +
+    "    OPTIONAL MATCH (target)-[:WORKS]->(workPosition:WorkPosition)\n" +
+    "    OPTIONAL MATCH (target)-[:STUDIES]->(degree:Degree)\n" +
+    "    OPTIONAL MATCH (target)-[:CREATES]->(report:Report) \n" +
+    "    OPTIONAL MATCH (target)-[:SENDS|:TO]-(contactRequest:ContactRequest)\n" +
+    "    OPTIONAL MATCH (post)<-[:TO]-(postReaction:Reaction)\n" +
+    "    OPTIONAL MATCH (post)<-[:FOR]-(postComment:Comment) \n" +
+    "    OPTIONAL MATCH (post)<-[:HAS]-(postReport:Report) \n" +
+    "    OPTIONAL MATCH (postReaction)<-[:TO]-(commentReaction:Reaction) \n" +
+    "detach delete commentReaction, postReport, postComment, postReaction,\n" +
+    "contactRequest, report, degree, workPosition, post, target;"
   )
   void deleteUser(String email);
+
+  Optional<User> findByEmail(String email);
 }

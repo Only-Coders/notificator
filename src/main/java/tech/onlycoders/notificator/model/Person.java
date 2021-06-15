@@ -17,6 +17,7 @@ public abstract class Person extends BaseEntity implements Serializable {
 
   private String firstName;
   private String lastName;
+  private String fullName;
   private String email;
   private String imageURI;
   private String canonicalName;

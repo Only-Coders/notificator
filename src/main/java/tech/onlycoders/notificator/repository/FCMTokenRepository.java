@@ -11,6 +11,6 @@ public interface FCMTokenRepository extends Neo4jRepository<FCMToken, String> {
   @Query("MATCH (t:FCMToken{id: $id}) DETACH DELETE t;")
   void deleteById(String id);
 
-  @Query("MATCH (t:FCMToken)<-[:OWNS]-(:User{canonicalName: $canonicalName}) RETURN t;")
-  List<FCMToken> getUserTokens(String canonicalName);
+  @Query("MATCH (t:FCMToken)<-[:OWNS]-(:User{email: $email}) RETURN t;")
+  List<FCMToken> getUserTokens(String email);
 }

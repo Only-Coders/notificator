@@ -16,11 +16,8 @@ public class MessageDTO implements Serializable {
   private EventType eventType;
   private String message;
   private String to;
+  private String from;
 
   @Builder.Default
-  private Boolean read = false;
-
-  private String from;
   private Long createdAt = new Date().toInstant().toEpochMilli();
-  private String imageURI;
 }

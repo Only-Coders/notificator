@@ -1,7 +1,6 @@
 package tech.onlycoders.notificator.model;
 
 import java.io.Serializable;
-import java.util.Date;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -22,6 +21,9 @@ public class Notification implements Serializable {
 
   @Builder.Default
   private Boolean read = false;
+
+  private Boolean sourceIsFollower;
+  private Boolean sourceIsContact;
 
   private Long createdAt;
 }
