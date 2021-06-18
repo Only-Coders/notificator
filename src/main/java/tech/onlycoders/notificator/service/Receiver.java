@@ -36,23 +36,34 @@ public class Receiver {
   @RabbitHandler
   public void receive(MessageDTO message) {
     System.out.println(" [x] Received '" + message + "'");
-    this.userRepository.getUserNotificationConfig(message.getEventType().name(), message.getFrom())
+    if (message.getEventType() == EventType.NEW_ADMIN_ACCOUNT) {
+      this.mailService.sendMail("OnlyCoders Notifications", message.getTo(), message.getMessage());
+    } else {
+      this.userRepository.findByEmail(message.getFrom())
+        .ifPresent(
+          sourceUser ->
+            this.userRepository.getUserNotificationConfig(message.getEventType().name(), message.getTo())
+              .ifPresentOrElse(
+                targetUser -> filterUsersAndSendNotifications(message, sourceUser, targetUser),
+                () -> System.out.println("[x] User not found '" + message.getTo() + "'")
+              )
+        );
+    }
+  }
+
+  private void filterUsersAndSendNotifications(MessageDTO message, User sourceUser, User targetUser) {
+    targetUser
+      .getConfigs()
+      .stream()
+      .filter(notiConfig -> notiConfig.getType().name().equalsIgnoreCase(message.getEventType().name()))
+      .findFirst()
       .ifPresentOrElse(
-        user ->
-          user
-            .getConfigs()
-            .stream()
-            .filter(notiConfig -> notiConfig.getType().name().equalsIgnoreCase(message.getEventType().name()))
-            .findFirst()
-            .ifPresentOrElse(
-              notificationConfig -> notifyUser(message, user, notificationConfig),
-              () -> System.out.println("[x] Notification Config not found for '" + message.getTo() + "'")
-            ),
-        () -> System.out.println("[x] User not found '" + message.getTo() + "'")
+        notificationConfig -> notifyUser(message, sourceUser, targetUser, notificationConfig),
+        () -> System.out.println("[x] Notification Config not found for '" + message.getTo() + "'")
       );
   }
 
-  private void notifyUser(MessageDTO message, User sourceUser, NotificationConfig notificationConfig) {
+  private void notifyUser(MessageDTO message, User sourceUser, User targetUser, NotificationConfig notificationConfig) {
     var notification = Notification
       .builder()
       .eventType(message.getEventType())
@@ -68,24 +79,22 @@ public class Receiver {
 
     if (message.getEventType() == EventType.NEW_POST) {
       this.userRepository.getUserContactsAndFollowers(sourceUser.getEmail(), message.getEventType().name())
-        .forEach(
-          contact ->
-            contact
-              .getConfigs()
-              .stream()
-              .filter(notiConfig -> notiConfig.getType().name().equalsIgnoreCase(message.getEventType().name()))
-              .findFirst()
-              .ifPresentOrElse(
-                userConfig -> {
-                  sendNotification(notification, contact, userConfig);
-                },
-                () -> System.out.println("[x] Notification Config not found for '" + contact.getEmail() + "'")
-              )
-        );
+        .forEach(contact -> sendNotificationToContactsAndFollowers(message, notification, contact));
     } else {
-      this.userRepository.findByEmail(message.getTo())
-        .ifPresent(targetUser -> sendNotification(notification, targetUser, notificationConfig));
+      sendNotification(notification, targetUser, notificationConfig);
     }
+  }
+
+  private void sendNotificationToContactsAndFollowers(MessageDTO message, Notification notification, User contact) {
+    contact
+      .getConfigs()
+      .stream()
+      .filter(notiConfig -> notiConfig.getType().name().equalsIgnoreCase(message.getEventType().name()))
+      .findFirst()
+      .ifPresentOrElse(
+        userConfig -> sendNotification(notification, contact, userConfig),
+        () -> System.out.println("[x] Notification Config not found for '" + contact.getEmail() + "'")
+      );
   }
 
   private void addFollowerContactStatus(MessageDTO message, Notification notification) {
