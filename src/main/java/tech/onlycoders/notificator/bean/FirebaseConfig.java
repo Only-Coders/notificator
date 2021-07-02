@@ -3,6 +3,7 @@ package tech.onlycoders.notificator.bean;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
+import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.messaging.FirebaseMessaging;
 import java.io.IOException;
@@ -38,7 +39,13 @@ public class FirebaseConfig {
 
   @Bean
   @DependsOn(value = "createFireBaseApp")
-  public FirebaseDatabase createFirebaseAuth() {
+  public FirebaseDatabase createFirebaseDatabase() {
     return FirebaseDatabase.getInstance();
+  }
+
+  @Bean
+  @DependsOn(value = "createFireBaseApp")
+  public FirebaseAuth createFirebaseAuth() {
+    return FirebaseAuth.getInstance();
   }
 }
