@@ -30,28 +30,19 @@ jobs:
           key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle') }}
           restore-keys: ${{ runner.os }}-gradle
 
-      #      - uses: danielr1996/envsubst-action@1.0.0
-      #        env:
-      #          VERSION: 1.2.3
-      #          INSTANCE: staging
-      #        with:
-      #          input: src/main/resources/application-prod.properties
-      #          output: src/main/resources/application-prod.properties
+      - name: EnvSub
+        uses: danielr1996/envsubst-action@1.0.0
+        env:
+          MAIL_GUN_API_KEY: ${{ secrets.MAIL_GUN_API_KEY }}
+        with:
+          input: application.properties.tmpl
+          output: src/main/resources/application.properties
 
       - name: Build with Gradle
         run: |
           echo $FB_SECRET_KEY > src/main/resources/serviceAccount.json
           ./gradlew build
           cp build/libs/onlycoders-notificator-0.0.1-SNAPSHOT.jar notificator.jar
-
-      # - uses: "marvinpinto/action-automatic-releases@latest"
-      #   with:
-      #     repo_token: "${{ secrets.GITHUB_TOKEN }}"
-      #     automatic_release_tag: "latest"
-      #     prerelease: true
-      #     title: "Development Build"
-      #     files: |
-      #       build/libs/backend-0.0.1-SNAPSHOT.jar
 
       - name: rsync deployments
         uses: burnett01/rsync-deployments@4.1
